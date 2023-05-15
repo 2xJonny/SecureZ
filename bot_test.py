@@ -132,6 +132,7 @@ async def add_email(ctx):
             await dm_channel.send("Email saved successfully.")
         except asyncio.TimeoutError:
             await dm_channel.send("Email submission timed out. Please try again later.")
+            
 @bot.command()
 async def delete_email(ctx):
     dm_channel = await ctx.author.create_dm()

@@ -47,7 +47,7 @@ async def on_command_error(ctx, error):
         return
 
 # Role ID of the allowed role to access bot commands
-allowed_role_id = 894058606536839188
+allowed_role_id = 1106034703422722080
 
 def check_role(ctx):
     role = discord.utils.get(ctx.guild.roles, id=allowed_role_id)
@@ -81,10 +81,13 @@ async def bot_help(ctx):
 
 @bot.command()
 async def add_email(ctx):
-    dm_channel = await ctx.author.create_dm()
+    await ctx.message.delete()
+    # show the user a message in the channel only they can see
+    # dm_channel = await ctx.author.create_dm()
+    dm_channel = ctx.channel
     current_email = email_data.get(ctx.author.id)
     if current_email:
-        await dm_channel.send("You already have an email saved. Would you like to change it? (Y or N)")
+        await dm_channel.send("You already have an email saved. Would you like to change it? (Y or N)", ephemeral=True)
 
         def check_response(message):
             return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
