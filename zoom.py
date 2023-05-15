@@ -21,10 +21,7 @@ def get_access_token(client_id, client_secret):
     print(response.json())
     return response.json()['access_token']
 
-access_token = get_access_token(client_id, client_secret)
-
-
-def add_participant_to_meeting(meeting_id, first_name, last_name, email):
+def add_participant_to_meeting(meeting_id, first_name, last_name, email, access_token):
     headers = {
         'Authorization': 'Bearer ' + access_token,
         'Content-Type': 'application/json'
@@ -39,4 +36,9 @@ def add_participant_to_meeting(meeting_id, first_name, last_name, email):
     print(response.json())
     print("Participant added to meeting")
 
-add_participant_to_meeting("81866150394", "Jason", "Testing2", "j.steinberg702@gmail.com")
+def register_user_for_meetings(meeting_ids, first_name, last_name, email):
+    access_token = get_access_token(client_id, client_secret)
+    for meeting_id in meeting_ids:
+        add_participant_to_meeting(meeting_id, first_name, last_name, email, access_token)
+
+register_user_for_meetings(["81866150394"], "Jason", "Testing3", "hockeydudej44@gmail.com")

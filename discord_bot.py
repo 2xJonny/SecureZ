@@ -1,11 +1,14 @@
+import os
 import discord
 from discord.ext import commands
 import asyncio
+from dotenv import load_dotenv
 
 intents = discord.Intents.default()
 intents.dm_messages = True
 intents.members = True
 intents.message_content = True
+load_dotenv() # load .env file
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -186,4 +189,4 @@ def read_email_data_file():
 # Call the function to read and print the email data file
 # read_email_data_file()
 
-bot.run('MTEwMjQ0MTk5MTQ2OTU0MzQ3NQ.G56oAO.1LjskROt0sVuFnBCyFKI1sTIh4jrQKEpNCAsmI')
+bot.run(os.environ.get("DISCORD_TOKEN"))
