@@ -1,12 +1,17 @@
+import os
 import discord
 from discord.ext import commands
 import asyncio
+from dotenv import load_dotenv
 
 intents = discord.Intents.default()
 intents.dm_messages = True
 intents.members = True
 intents.message_content = True
+load_dotenv() # load .env file
+
 bot = commands.Bot(command_prefix='!', intents=intents)
+
 email_data = {}  # Dictionary to store user email data
 
 # Load email data from file
@@ -21,6 +26,7 @@ def load_email_data():
         # Create the file if it doesn't exist
         with open("email_data.txt", "w"):
             pass
+
 # Save email data to file
 def save_email_data():
     with open("email_data.txt", "w") as file:
@@ -42,9 +48,10 @@ async def on_member_join(member):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
-    
+
 # Role ID of the allowed role to access bot commands
-allowed_role_id = 894058606536839189
+allowed_role_id = 1106034703422722080
+
 def check_role(ctx):
     role = discord.utils.get(ctx.guild.roles, id=allowed_role_id)
     return role is not None and role in ctx.author.roles
@@ -61,7 +68,7 @@ async def global_check(ctx):
         # Restrict access to bot commands for other users
         await ctx.send("You don't have the required role to use this bot command.")
         return False
-    
+
 @bot.command()
 async def bot_help(ctx):
     help_embed = discord.Embed(title="SecureZ Bot Help", description="Here are the available commands:")
@@ -94,16 +101,48 @@ async def add_email(ctx):
         except asyncio.TimeoutError:
             await dm_channel.send("Response timed out. No changes will be made to your current email.")
     else:
-        await dm_channel.send("Please provide the email associated with your Zoom account.")
+        await dm_channel.send("Please provide the email associated with your Zoom account. The email must be in the format 'user@gmail.com'.")
         def check_email(message):
             return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
         try:
-            message = await bot.wait_for('message', check=check_email, timeout=60)
-            email_data[ctx.author.id] = message.content
-            save_email_data()
-            await dm_channel.send("Email saved successfully.")
+            while True:
+                message = await bot.wait_for('message', check=check_email, timeout=60)
+                if "@" not in message.content:
+                    await dm_channel.send("The email must be in the format 'user@gmail.com'. Please try again.")
+                else:
+                    email_data[ctx.author.id] = message.content
+                    save_email_data()
+                    await dm_channel.send("Email saved successfully.")
+                    break
         except asyncio.TimeoutError:
             await dm_channel.send("Email submission timed out. Please try again later.")
+
+    # Schedule deletion of command message after 4 seconds
+    await asyncio.create_task(delete_command_message(ctx.message, 4))
+
+@bot.command()
+async def change_email(ctx):
+    dm_channel = await ctx.author.create_dm()
+    current_email = email_data.get(ctx.author.id)
+    if current_email:
+        await dm_channel.send(f"Your current email on file is: {current_email}\n\nPlease enter the new email you would like to associate with your Zoom account. The email must be in the format 'user@gmail.com'.")
+        def check(message):
+            return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
+        try:
+            while True:
+                message = await bot.wait_for('message', check=check, timeout=60)
+                if "@" not in message.content:
+                    await dm_channel.send("The email must be in the format 'user@gmail.com'. Please try again.")
+                else:
+                    email_data[ctx.author.id] = message.content
+                    save_email_data()
+                    await dm_channel.send(f"Email changed successfully. Your new email is: {message.content}")
+                    break
+        except asyncio.TimeoutError:
+            await dm_channel.send("Email change request timed out. Please try again later.")
+    else:
+        await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
+
     # Schedule deletion of command message after 4 seconds
     await asyncio.create_task(delete_command_message(ctx.message, 4))
 
@@ -111,6 +150,7 @@ async def add_email(ctx):
 async def delete_email(ctx):
     dm_channel = await ctx.author.create_dm()
     current_email = email_data.get(ctx.author.id)
+
     if current_email:
         del email_data[ctx.author.id]
         save_email_data()
@@ -120,30 +160,11 @@ async def delete_email(ctx):
     await asyncio.sleep(4)  # Delay for 4 seconds
     await ctx.message.delete()  # Delete the command message
 
-@bot.command()
-async def change_email(ctx):
-    dm_channel = await ctx.author.create_dm()
-    current_email = email_data.get(ctx.author.id)
-    if current_email:
-        await dm_channel.send(f"Your current email on file is: {current_email}\n\nPlease enter the new email you would like to associate with your Zoom account.")
-        def check(message):
-            return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
-        try:
-            message = await bot.wait_for('message', check=check, timeout=60)
-            email_data[ctx.author.id] = message.content
-            save_email_data()
-            await dm_channel.send(f"Email changed successfully. Your new email is: {message.content}")
-        except asyncio.TimeoutError:
-            await dm_channel.send("Email change request timed out. Please try again later.")
-    else:
-        await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
-    # Schedule deletion of command message after 4 seconds
-    await asyncio.create_task(delete_command_message(ctx.message, 4))
 # Function to delete the command message after a delay
 async def delete_command_message(message, delay):
     await asyncio.sleep(delay)
     await message.delete()
-    
+
 @bot.command()
 async def view_email(ctx):
     current_email = email_data.get(ctx.author.id)
@@ -154,6 +175,7 @@ async def view_email(ctx):
         await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
     await asyncio.sleep(4)  # Delay for 4 seconds
     await ctx.message.delete()  # Delete the command message
+
 # To check who is on the email list, comment out the 'bot.run' line and uncomment the 'read_email_data_file()' line.
 def read_email_data_file():
     try:
@@ -163,7 +185,8 @@ def read_email_data_file():
                 print(line.strip())
     except FileNotFoundError:
         print("Email data file not found.")
+
 # Call the function to read and print the email data file
 # read_email_data_file()
 
-bot.run('MTEwMjQ0MTk5MTQ2OTU0MzQ3NQ.G56oAO.1LjskROt0sVuFnBCyFKI1sTIh4jrQKEpNCAsmI')
+bot.run(os.environ.get("MTEwMjQ0MTk5MTQ2OTU0MzQ3NQ.G56oAO.1LjskROt0sVuFnBCyFKI1sTIh4jrQKEpNCAsmI"))

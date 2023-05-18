@@ -1,14 +1,10 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import asyncio
 
-intents = discord.Intents.default()
-intents.dm_messages = True
-intents.members = True
-intents.message_content = True
-
+intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
-
 email_data = {}  # Dictionary to store user email data
 
 # Load email data from file
@@ -34,6 +30,11 @@ def save_email_data():
 async def on_ready():
     load_email_data()
     print(f'Logged in as {bot.user.name} ({bot.user.id})')
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} command(s)")
+    except Exception as e:
+        print(e)
 
 @bot.event
 async def on_member_join(member):
@@ -47,7 +48,7 @@ async def on_command_error(ctx, error):
         return
 
 # Role ID of the allowed role to access bot commands
-allowed_role_id = 894058606536839189
+allowed_role_id = 1106034703422722080
 
 def check_role(ctx):
     role = discord.utils.get(ctx.guild.roles, id=allowed_role_id)
@@ -79,16 +80,18 @@ async def bot_help(ctx):
     await asyncio.sleep(4)  # Delay for 4 seconds
     await ctx.message.delete()  # Delete the command message
 
+@bot.tree.command(name="add_email")
+async def add_email(interaction: discord.Interaction):
+    await interaction.response.send_message(f'Hey, {interaction.user.mention}, click my profile picture and DM me "!bot_help"!', ephemeral=True)
+
 @bot.command()
 async def add_email(ctx):
     dm_channel = await ctx.author.create_dm()
     current_email = email_data.get(ctx.author.id)
     if current_email:
         await dm_channel.send("You already have an email saved. Would you like to change it? (Y or N)")
-
         def check_response(message):
-            return message.author ==         ctx.author and isinstance(message.channel, discord.DMChannel)
-
+            return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
         try:
             response = await bot.wait_for('message', check=check_response, timeout=60)
             if response.content.lower() == 'y':
@@ -100,18 +103,47 @@ async def add_email(ctx):
         except asyncio.TimeoutError:
             await dm_channel.send("Response timed out. No changes will be made to your current email.")
     else:
-        await dm_channel.send("Please provide the email associated with your Zoom account.")
-
+        await dm_channel.send("Please provide the email associated with your Zoom account. The email must be in the format 'user@gmail.com'.")
         def check_email(message):
             return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
-
         try:
-            message = await bot.wait_for('message', check=check_email, timeout=60)
-            email_data[ctx.author.id] = message.content
-            save_email_data()
-            await dm_channel.send("Email saved successfully.")
+            while True:
+                message = await bot.wait_for('message', check=check_email, timeout=60)
+                if "@" not in message.content:
+                    await dm_channel.send("The email must be in the format 'user@gmail.com'. Please try again.")
+                else:
+                    email_data[ctx.author.id] = message.content
+                    save_email_data()
+                    await dm_channel.send("Email saved successfully.")
+                    break
         except asyncio.TimeoutError:
             await dm_channel.send("Email submission timed out. Please try again later.")
+
+    # Schedule deletion of command message after 4 seconds
+    await asyncio.create_task(delete_command_message(ctx.message, 4))
+
+@bot.command()
+async def change_email(ctx):
+    dm_channel = await ctx.author.create_dm()
+    current_email = email_data.get(ctx.author.id)
+    if current_email:
+        await dm_channel.send(f"Your current email on file is: {current_email}\n\nPlease enter the new email you would like to associate with your Zoom account. The email must be in the format 'user@gmail.com'.")
+        def check(message):
+            return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
+        try:
+            while True:
+                message = await bot.wait_for('message', check=check, timeout=60)
+                if "@" not in message.content:
+                    await dm_channel.send("The email must be in the format 'user@gmail.com'. Please try again.")
+                else:
+                    email_data[ctx.author.id] = message.content
+                    save_email_data()
+                    await dm_channel.send(f"Email changed successfully. Your new email is: {message.content}")
+                    break
+        except asyncio.TimeoutError:
+            await dm_channel.send("Email change request timed out. Please try again later.")
+    else:
+        await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
 
     # Schedule deletion of command message after 4 seconds
     await asyncio.create_task(delete_command_message(ctx.message, 4))
@@ -120,7 +152,6 @@ async def add_email(ctx):
 async def delete_email(ctx):
     dm_channel = await ctx.author.create_dm()
     current_email = email_data.get(ctx.author.id)
-
     if current_email:
         del email_data[ctx.author.id]
         save_email_data()
@@ -130,29 +161,6 @@ async def delete_email(ctx):
     await asyncio.sleep(4)  # Delay for 4 seconds
     await ctx.message.delete()  # Delete the command message
 
-@bot.command()
-async def change_email(ctx):
-    dm_channel = await ctx.author.create_dm()
-    current_email = email_data.get(ctx.author.id)
-    if current_email:
-        await dm_channel.send(f"Your current email on file is: {current_email}\n\nPlease enter the new email you would like to associate with your Zoom account.")
-
-        def check(message):
-            return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
-
-        try:
-            message = await bot.wait_for('message', check=check, timeout=60)
-            email_data[ctx.author.id] = message.content
-            save_email_data()
-            await dm_channel.send(f"Email changed successfully. Your new email is: {message.content}")
-        except asyncio.TimeoutError:
-            await dm_channel.send("Email change request timed out. Please try again later.")
-    else:
-        await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
-
-    # Schedule deletion of command message after 4 seconds
-    await asyncio.create_task(delete_command_message(ctx.message, 4))
-
 # Function to delete the command message after a delay
 async def delete_command_message(message, delay):
     await asyncio.sleep(delay)
@@ -160,26 +168,26 @@ async def delete_command_message(message, delay):
 
 @bot.command()
 async def view_email(ctx):
-    current_email = email_data.get(ctx.author.id)
     dm_channel = await ctx.author.create_dm()
+    current_email = email_data.get(ctx.author.id)
     if current_email:
-        await dm_channel.send(f"The email currently on file for you is: {current_email}")
+        await dm_channel.send(f"Your current email on file is: {current_email}")
     else:
-        await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
+        await dm_channel.send("You don't have an email on file.")
     await asyncio.sleep(4)  # Delay for 4 seconds
     await ctx.message.delete()  # Delete the command message
 
-# To check who is on the email list, comment out the 'bot.run' line and uncomment the 'read_email_data_file()' line.
-def read_email_data_file():
-    try:
-        with open("email_data.txt", "r") as file:
-            lines = file.readlines()
-            for line in lines:
-                print(line.strip())
-    except FileNotFoundError:
-        print("Email data file not found.")
+@bot.event
+async def on_member_update(before, after):
+    monitored_role_id = 1106034703422722080  # Replace with the ID of the whitelisted role
 
-# Call the function to read and print the email data file
-# read_email_data_file()
+    if monitored_role_id in [role.id for role in before.roles] and monitored_role_id not in [role.id for role in after.roles]:
+        # Whitelisted role was removed from the member
+        member_id = before.id
 
+        if member_id in email_data:
+            del email_data[member_id]  # Remove the member ID and email from the dictionary
+            save_email_data()  # Save the updated email data to the file
+
+# Run the bot
 bot.run('MTEwMjQ0MTk5MTQ2OTU0MzQ3NQ.G56oAO.1LjskROt0sVuFnBCyFKI1sTIh4jrQKEpNCAsmI')
