@@ -37,7 +37,7 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
-    if "PaidMember" in [role.name for role in member.roles]:
+    if "Member" in [role.name for role in member.roles]:
         dm_channel = await member.create_dm()
         await dm_channel.send("Welcome to SecureZ! To access exclusive Zoom meetings, please provide the email associated with your Zoom account.")
 
@@ -45,34 +45,13 @@ async def on_member_join(member):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
-    
 
-# Dictionary to store allowed role names for different servers
-allowed_roles = {
-    758744436908883978: ["discordian"],
-    758744436908883978: ["sun wukong"],
-    # Add more server IDs and role names as needed
-}
+# Role ID of the allowed role to access bot commands
+allowed_role_id = 894058606536839189
 
 def check_role(ctx):
-    server_id = ctx.guild.id
-    if server_id in allowed_roles:
-        allowed_role_names = allowed_roles[server_id]
-        for role_name in allowed_role_names:
-            role = discord.utils.get(ctx.guild.roles, name=role_name)
-            if role in ctx.author.roles:
-                return True
-    return False
-
-def check_role(ctx):
-    server_id = ctx.guild.id
-    if server_id in allowed_roles:
-        allowed_role_ids = allowed_roles[server_id]
-        for role_id in allowed_role_ids:
-            role = ctx.guild.get_role(role_id)
-            if role in ctx.author.roles:
-                return True
-    return False
+    role = discord.utils.get(ctx.guild.roles, id=allowed_role_id)
+    return role is not None and role in ctx.author.roles
 
 @bot.check
 async def global_check(ctx):
@@ -95,19 +74,20 @@ async def bot_help(ctx):
     help_embed.add_field(name="!change_email", value="Privately message the bot to change your current email.", inline=False)
     help_embed.add_field(name="!delete_email", value="Display this help message.", inline=False)
     help_embed.add_field(name="!view_email", value="View the email currently on file.", inline=False)
-    await ctx.send(embed=help_embed)
-
+    dm_channel = await ctx.author.create_dm()
+    await dm_channel.send(embed=help_embed)
+    await asyncio.sleep(4)  # Delay for 4 seconds
+    await ctx.message.delete()  # Delete the command message
 
 @bot.command()
 async def add_email(ctx):
     dm_channel = await ctx.author.create_dm()
     current_email = email_data.get(ctx.author.id)
-
     if current_email:
         await dm_channel.send("You already have an email saved. Would you like to change it? (Y or N)")
 
         def check_response(message):
-            return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
+            return message.author ==         ctx.author and isinstance(message.channel, discord.DMChannel)
 
         try:
             response = await bot.wait_for('message', check=check_response, timeout=60)
@@ -116,7 +96,7 @@ async def add_email(ctx):
             elif response.content.lower() == 'n':
                 await dm_channel.send(f"No changes will be made to your current email: {current_email}")
             else:
-                await dm_channel.send("Invalid response. No changes will be made to your current email.")
+                await dm_channel.send("Invalid response. No changes will be made to your current email. If you would still like to change your email, use the command '!change_email'.")
         except asyncio.TimeoutError:
             await dm_channel.send("Response timed out. No changes will be made to your current email.")
     else:
@@ -132,6 +112,10 @@ async def add_email(ctx):
             await dm_channel.send("Email saved successfully.")
         except asyncio.TimeoutError:
             await dm_channel.send("Email submission timed out. Please try again later.")
+
+    # Schedule deletion of command message after 4 seconds
+    await asyncio.create_task(delete_command_message(ctx.message, 4))
+
 @bot.command()
 async def delete_email(ctx):
     dm_channel = await ctx.author.create_dm()
@@ -143,6 +127,8 @@ async def delete_email(ctx):
         await dm_channel.send("Your email has been deleted successfully.")
     else:
         await dm_channel.send("You don't have an email on file.")
+    await asyncio.sleep(4)  # Delay for 4 seconds
+    await ctx.message.delete()  # Delete the command message
 
 @bot.command()
 async def change_email(ctx):
@@ -164,13 +150,24 @@ async def change_email(ctx):
     else:
         await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
 
+    # Schedule deletion of command message after 4 seconds
+    await asyncio.create_task(delete_command_message(ctx.message, 4))
+
+# Function to delete the command message after a delay
+async def delete_command_message(message, delay):
+    await asyncio.sleep(delay)
+    await message.delete()
+
 @bot.command()
 async def view_email(ctx):
     current_email = email_data.get(ctx.author.id)
+    dm_channel = await ctx.author.create_dm()
     if current_email:
-        await ctx.send(f"The email currently on file for you is: {current_email}")
+        await dm_channel.send(f"The email currently on file for you is: {current_email}")
     else:
-        await ctx.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
+        await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
+    await asyncio.sleep(4)  # Delay for 4 seconds
+    await ctx.message.delete()  # Delete the command message
 
 # To check who is on the email list, comment out the 'bot.run' line and uncomment the 'read_email_data_file()' line.
 def read_email_data_file():
@@ -186,4 +183,3 @@ def read_email_data_file():
 # read_email_data_file()
 
 bot.run('MTEwMjQ0MTk5MTQ2OTU0MzQ3NQ.G56oAO.1LjskROt0sVuFnBCyFKI1sTIh4jrQKEpNCAsmI')
-
