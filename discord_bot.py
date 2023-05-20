@@ -50,7 +50,7 @@ async def on_command_error(ctx, error):
         return
 
 # Role ID of the allowed role to access bot commands
-allowed_role_id = 1106034703422722080
+allowed_role_id = 1106034703422722080   # This will be the admin user
 
 def check_role(ctx):
     role = discord.utils.get(ctx.guild.roles, id=allowed_role_id)
@@ -188,5 +188,15 @@ def read_email_data_file():
 
 # Call the function to read and print the email data file
 # read_email_data_file()
+
+# def upload_new_accepted_user(serverId, discordName, discord4DigitID, email):
+#     # using the serverID, we tap into that firebase collection 
+    # We grab the collection 
+
+
+
+
+
+
 
 bot.run(os.environ.get("DISCORD_TOKEN"))
