@@ -1,9 +1,11 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 import asyncio
 
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+intents.dm_messages = True
+intents.members = True
+intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 email_data = {}  # Dictionary to store user email data
 
@@ -30,11 +32,6 @@ def save_email_data():
 async def on_ready():
     load_email_data()
     print(f'Logged in as {bot.user.name} ({bot.user.id})')
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} command(s)")
-    except Exception as e:
-        print(e)
 
 @bot.event
 async def on_member_join(member):
@@ -79,10 +76,6 @@ async def bot_help(ctx):
     await dm_channel.send(embed=help_embed)
     await asyncio.sleep(4)  # Delay for 4 seconds
     await ctx.message.delete()  # Delete the command message
-
-@bot.tree.command(name="add_email")
-async def add_email(interaction: discord.Interaction):
-    await interaction.response.send_message(f'Hey, {interaction.user.mention}, click my profile picture and DM me "!bot_help"!', ephemeral=True)
 
 @bot.command()
 async def add_email(ctx):
@@ -147,6 +140,7 @@ async def change_email(ctx):
 
     # Schedule deletion of command message after 4 seconds
     await asyncio.create_task(delete_command_message(ctx.message, 4))
+
 
 @bot.command()
 async def delete_email(ctx):
