@@ -1,9 +1,11 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 import asyncio
 
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+intents.dm_messages = True
+intents.members = True
+intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 email_data = {}  # Dictionary to store user email data
 
@@ -30,11 +32,6 @@ def save_email_data():
 async def on_ready():
     load_email_data()
     print(f'Logged in as {bot.user.name} ({bot.user.id})')
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} command(s)")
-    except Exception as e:
-        print(e)
 
 @bot.event
 async def on_member_join(member):
@@ -67,17 +64,18 @@ async def global_check(ctx):
         await ctx.send("You don't have the required role to use this bot command.")
         return False
 
-@bot.tree.command(name="bot_help")
-async def bot_help_slash(interaction: discord.Interaction):
-    help_embed = discord.Embed(title="SecureZ Bot Help", description="Available commands:")
-    help_embed.add_field(name="/bot_help", value="Display this help message.", inline=False)
-    help_embed.add_field(name="!add_email", value="Add email registered with your Zoom account.", inline=False)
-    help_embed.add_field(name="!change_email", value="Change the current email listed as your Zoom account email.", inline=False)
-    help_embed.add_field(name="!delete_email", value="Delete the email listed as your Zoom account email.", inline=False)
+@bot.command()
+async def bot_help(ctx):
+    help_embed = discord.Embed(title="SecureZ Bot Help", description="Here are the available commands:")
+    help_embed.add_field(name="!bot_help", value="Display this help message.", inline=False)
+    help_embed.add_field(name="!add_email", value="Privately message the bot to provide the email associated with your Zoom account.", inline=False)
+    help_embed.add_field(name="!change_email", value="Privately message the bot to change your current email.", inline=False)
+    help_embed.add_field(name="!delete_email", value="Display this help message.", inline=False)
     help_embed.add_field(name="!view_email", value="View the email currently on file.", inline=False)
-    message_content = f'**Hey, {interaction.user.mention}, click my profile picture and DM me with a command listed below!**'
-    help_embed.color = discord.Color.from_rgb(0x2D, 0x8C, 0xFF)
-    await interaction.response.send_message(content=message_content, embed=help_embed, ephemeral=True)
+    dm_channel = await ctx.author.create_dm()
+    await dm_channel.send(embed=help_embed)
+    await asyncio.sleep(4)  # Delay for 4 seconds
+    await ctx.message.delete()  # Delete the command message
 
 @bot.command()
 async def add_email(ctx):
@@ -85,14 +83,12 @@ async def add_email(ctx):
     current_email = email_data.get(ctx.author.id)
     if current_email:
         await dm_channel.send("You already have an email saved. Would you like to change it? (Y or N)")
-
         def check_response(message):
             return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
-
         try:
             response = await bot.wait_for('message', check=check_response, timeout=60)
             if response.content.lower() == 'y':
-                await bot.get_command('change_email').invoke(ctx)
+                await change_email.invoke(ctx)
             elif response.content.lower() == 'n':
                 await dm_channel.send(f"No changes will be made to your current email: {current_email}")
             else:
@@ -101,10 +97,8 @@ async def add_email(ctx):
             await dm_channel.send("Response timed out. No changes will be made to your current email.")
     else:
         await dm_channel.send("Please provide the email associated with your Zoom account. The email must be in the format 'user@gmail.com'.")
-
         def check_email(message):
             return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
-
         try:
             while True:
                 message = await bot.wait_for('message', check=check_email, timeout=60)
@@ -146,6 +140,7 @@ async def change_email(ctx):
 
     # Schedule deletion of command message after 4 seconds
     await asyncio.create_task(delete_command_message(ctx.message, 4))
+
 
 @bot.command()
 async def delete_email(ctx):
