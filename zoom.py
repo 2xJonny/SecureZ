@@ -94,9 +94,9 @@ email = "j.steinberg702@gmail.com"
 # zoomService.add_participant_to_meeting(meeting_id, "Jason", "Testing3", email)
 
 # Test 2
-zoomService.remove_participant_from_meeting(meeting_id, email)
+# zoomService.remove_participant_from_meeting(meeting_id, email)
 
 # # Test 3
-# zoomService.change_participant_email(meeting_id, "j.steinberg702@gmail.com", "hockeydudej46@gmail.com", "Jason", "Steinberg")
+zoomService.change_participant_email(meeting_id, "j.steinberg702@gmail.com", "hockeydudej46@gmail.com", "Jason", "Steinberg")
 
 
