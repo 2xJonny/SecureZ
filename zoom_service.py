@@ -3,14 +3,16 @@ import base64
 
 class ZoomService:
     # TODO: PULL FROM DYNAMICALLY FIREBASE DEPENDING ON CLIENT
-    client_id = 'ExM7FRjvQUG9oYbwmm9UzA'
-    client_secret = 'Tnm0QQf45ZAR2E8A6deJx69W0LTsGhM8'
 
     auth_url = 'https://zoom.us/oauth/token'
 
 
-    def __init__(self, server_name):
+    def __init__(self, client_id, client_secret, account_id):
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.account_id = account_id
         self.access_token = self.get_access_token(self.client_id, self.client_secret)
+
 
     def get_access_token(self, client_id, client_secret):
         auth_string = f'{client_id}:{client_secret}'
@@ -21,7 +23,7 @@ class ZoomService:
         }
         data = {
             'grant_type': 'account_credentials',
-            'account_id': 'Gv5scKHoSxWMgcFye2DtYg'
+            'account_id': self.account_id
         }
         response = requests.post(self.auth_url, headers=headers, data=data)
         print("response: ")
@@ -85,18 +87,19 @@ class ZoomService:
         self.add_participant_to_meeting(meeting_id, first_name, last_name, new_email)
 
 
-zoomService = ZoomService("test server 1")
 
-meeting_id = "81866150394"
-email = "j.steinberg702@gmail.com"
+# zoomService = ZoomService(zoom_client_id, zoom_client_secret)
+
+# meeting_id = "81866150394"
+# email = "hockeydudej46@gmail.com"
 
 # Test 1
-# zoomService.add_participant_to_meeting(meeting_id, "Jason", "Testing3", email)
+# zoomService.add_participant_to_meeting(meeting_id, "jsteinberg7", "-", email)
 
 # Test 2
 # zoomService.remove_participant_from_meeting(meeting_id, email)
 
 # # Test 3
-zoomService.change_participant_email(meeting_id, "j.steinberg702@gmail.com", "hockeydudej46@gmail.com", "Jason", "Steinberg")
+# zoomService.change_participant_email(meeting_id, "j.steinberg702@gmail.com", "hockeydudej46@gmail.com", "Jason", "Steinberg")
 
 

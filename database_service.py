@@ -119,8 +119,8 @@ class Meeting:
 		self.registrants = registrants
 		self.meetingID = meetingID
 
-	def add_registrant(self, email, firstName, fourDigitID, roleID):
-		self.registrants[email] = [firstName, fourDigitID, roleID]
+	def add_registrant(self, email, firstName, roleID):
+		self.registrants[email] = [firstName, roleID]
 
 		update_cloud_meeting_file(self.meetingID, self)
 
@@ -135,7 +135,7 @@ class Meeting:
 		registrantsToDelete = []
 
 		for registrant in self.registrants:
-			if self.registrants[registrant][2] == roleID:
+			if self.registrants[registrant][1] == roleID:
 				registrantsToDelete.append(registrant)
 
 
@@ -145,9 +145,26 @@ class Meeting:
 
 		update_cloud_meeting_file(self.meetingID, self)
 
+	def get_registrants(self):
+		return self.registrants
+
+	def change_email(self, email, newEmail):
+		listOfRegistrantInfo = self.registrants[email]
+		del self.registrants[email]
+		self.registrants[newEmail] = listOfRegistrantInfo
+		update_cloud_meeting_file(self.meetingID, self)
+
+	def change_role(self, newRoleID, email):
+		listToReAssign = self.registrants[email]
+		listToReAssign[1] = newRoleID
+		self.registrants[email] = listToReAssign
+		update_cloud_meeting_file(self.meetingID, self)
+
+
+
+
+
+
 
 		
-# meetingObj = get_meeting_file_as_obj("qqqmeetingIDqqq")
 
-
-# meetingObj.remove_individuals_based_roleID("@admin")
