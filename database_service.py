@@ -49,6 +49,7 @@ def get_meeting_file_as_obj(meetingID):
 
 	return meetingObj
 
+
 def update_cloud_client_file(discordServerID, clientObject):
 
 	dbService.collection("clientData").document(discordServerID).update({
@@ -63,6 +64,7 @@ def update_cloud_meeting_file(meetingID, meetingObj):
 		'AcceptedRoles': meetingObj.acceptedRoles, 
 		'Registrants': meetingObj.registrants
 	})
+
 	
 
 class Client:
@@ -75,6 +77,10 @@ class Client:
 		self.clientSecret = clientSecret
 		self.zoomMeetings = zoomMeetings
 		self.discordServerID = discordServerID
+
+	def get_meeting_ids_and_roles(self):
+		return self.zoomMeetings
+
 
 	def add_meeting_role(self, meetingID, newRoleID):
 
@@ -119,13 +125,13 @@ class Meeting:
 		self.registrants = registrants
 		self.meetingID = meetingID
 
-	def add_registrant(self, email, firstName, fourDigitID, roleID):
-		self.registrants[email] = [firstName, fourDigitID, roleID]
+	def add_registrant(self, discord_member_ID, email, firstName, roleID):
+		self.registrants[discord_member_ID] = [email, firstName, roleID]
 
 		update_cloud_meeting_file(self.meetingID, self)
 
-	def remove_individual_registrant(self, email):
-		del self.registrants[email]
+	def remove_individual_registrant(self, discord_member_ID):
+		del self.registrants[discord_member_ID]
 
 		update_cloud_meeting_file(self.meetingID, self)
 
@@ -134,20 +140,41 @@ class Meeting:
 
 		registrantsToDelete = []
 
-		for registrant in self.registrants:
-			if self.registrants[registrant][2] == roleID:
-				registrantsToDelete.append(registrant)
+		for discord_ID in self.registrants:
+			if self.registrants[discord_ID][2] == roleID:
+				registrantsToDelete.append(discord_ID)
 
 
 		for registrantToDelete in registrantsToDelete:
-			print(registrantToDelete)
 			self.remove_individual_registrant(registrantToDelete)
 
 		update_cloud_meeting_file(self.meetingID, self)
 
+	def get_registrants(self):
+		return self.registrants
 
-		
-# meetingObj = get_meeting_file_as_obj("qqqmeetingIDqqq")
+	def change_email(self, discord_member_ID, newEmail):
+		listOfRegistrantInfo = self.registrants[discord_member_ID]
+		listOfRegistrantInfo[0] = newEmail
+		self.registrants[discord_member_ID] = listOfRegistrantInfo
+		update_cloud_meeting_file(self.meetingID, self)
+
+	def change_role(self, newRoleID, discord_member_ID):
+		listToReAssign = self.registrants[discord_member_ID]
+		listToReAssign[2] = newRoleID
+		self.registrants[discord_member_ID] = listToReAssign
+		update_cloud_meeting_file(self.meetingID, self)
+
+	def get_registrant(self, discord_id):
+		return self.registrants[discord_id]
+
+	def get_registrant_email(self, discord_id):
+		return self.registrants[discord_id][0]
 
 
-# meetingObj.remove_individuals_based_roleID("@admin")
+
+
+
+
+
+
