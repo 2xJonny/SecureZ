@@ -34,26 +34,19 @@ discord_owner_name = client_obj.ownerName
 zoom_client_id = client_obj.clientID
 zoom_client_secret = client_obj.clientSecret
 zoom_account_id = client_obj.accountID
-zoom_meeting_id = "81866150394" # TODO: Pull from Firebase (unique to server)
+zoom_meeting_id = client_obj.zoomMeetings.keys[0]
+zoom_meeting_accepted_roles = client_obj.zoomMeetings[zoom_meeting_id]
+ # TODO: Pull from Firebase (unique to server)
 
-zoom_meeting_ids = client_obj.zoomMeetings.keys # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
-
+meeting_obj = firebase.get_meeting_file_as_obj(zoom_meeting_id)
 # "\@role_name"
 
 
 
 
 # Role ID of the allowed role to access bot commands
-meeting_id = "" # NOTE: I need the meeting ID of what we are runnning the script for 
-meeting_obj = firebase.get_meeting_file_as_obj(meeting_id)
+# allowed_role_id = 11060347034222080 # TODO: Pull from Firebase (unique to server), change to list (multiple roles allowed)
 
-accepted_role_ids = meeting_obj.acceptedRoles   # allowed_role_id = 11060347034222080 # TODO: Pull from Firebase (unique to server), change to list (multiple roles allowed)
-
-meeting_registrants = meeting_obj.registrants
-
-
-
-    # NOTE: I need a meeeting ID before I am able to get the allowed_role_ids
 
 # email_data = {}  # Dictionary to store user email data
 
@@ -115,6 +108,22 @@ async def global_check(ctx):
 #/bot_help embed message
 @bot.tree.command(name="bot_help")
 async def bot_help_slash(interaction: discord.Interaction):
+
+    user_id = interaction.user.id
+    username = interaction.user.name
+    role_id = None
+
+    # Check if the user has any roles
+    if interaction.guild:
+        member = interaction.guild.get_member(user_id)
+        if member and member.roles:
+            # Assuming the desired role is the second role in the member's role list
+            if len(member.roles) >= 2:
+                role_id = member.roles[1].id
+
+
+
+
     help_embed = discord.Embed(title="SecureZ Bot Help", description="Available commands:")
     help_embed.add_field(name="/bot_help", value="Display this help message.", inline=False)
     help_embed.add_field(name="!add_email", value="Add email registered with your Zoom account.", inline=False)
@@ -122,17 +131,19 @@ async def bot_help_slash(interaction: discord.Interaction):
     help_embed.add_field(name="!delete_email", value="Delete the email listed as your Zoom account email.", inline=False)
     help_embed.add_field(name="!view_email", value="View the email currently on file.", inline=False)
     message_content = f'**Hey, {interaction.user.mention}, click my profile picture and DM me with a command listed below!**'
+    
+    # Create firebase file for user 
+    meeting_obj.add_registrant(email="temp", firstName=username, roleID=role_id, discord_member_ID=user_id)
     help_embed.color = discord.Color.from_rgb(0x2D, 0x8C, 0xFF)
     await interaction.response.send_message(content=message_content, embed=help_embed, ephemeral=True)
 
 
 @bot.command()
-async def add_email(ctx): # TODO: Add comments, integrate zoom + firebase
-    meeting_obj = firebase.get_meeting_file_as_obj(meetingID)
+async def add_email(ctx, discord_id): # TODO: Add comments, integrate zoom + firebase
     dm_channel = await ctx.author.create_dm()
-    current_email = email_data.get(ctx.author.id)   # NOTE: CAP
+    current_email = meeting_obj.get_registrant_email(discord_id)
 
-    if current_email:
+    if current_email != "temp":
         await dm_channel.send("You already have an email saved. Would you like to change it? (Y or N)")
 
         # if user already has email added and uses command, it will ask them if they want to change the email already listed
@@ -143,8 +154,6 @@ async def add_email(ctx): # TODO: Add comments, integrate zoom + firebase
             response = await bot.wait_for('message', check=check_response, timeout=60) 
             if response.content.lower() == 'y':
                 await bot.get_command('change_email').invoke(ctx) # Call change_email command
-                new_email = await bot.wait_for('message', check=check_email, timeout=60)    # BUG: This could be wrong line of code but i needed a way to get the new email
-                meeting_obj.change_email(current_email, new_email.content)   # NOTE: how do I get the response of the new email
             elif response.content.lower() == 'n':
                 await dm_channel.send(f"No changes will be made to your current email: {current_email}")
             else:
@@ -162,13 +171,27 @@ async def add_email(ctx): # TODO: Add comments, integrate zoom + firebase
                 if "@" not in message.content:
                     await dm_channel.send('The email must be in the format "user@domain.com". Please try again.')
                 else:
+                    meeting_obj.change_email(discord_member_ID=discord_id, newEmail=message.content)
+
                     # email_data[ctx.author.id] = message.content
                     # save_email_data()1
 
+
+
+
+
+
+
+# THIS IS NO LONGER NECESSARY WITH BOT_HELP SCRAPING ROLE ID
                     zoomService.add_participant_to_meeting(meeting_id, message.content)
                     local_role_ID = "get bot command \@role_name to run"    # TODO: need to get the roleID of the user the bot is chatting with rn 
                     meeting_obj.add_registrant(email=message.content, firstName=ctx.author.name, roleID=local_role_ID)
                     
+
+
+
+
+
                     await dm_channel.send("Email saved successfully.")
                     break
         except asyncio.TimeoutError:
@@ -194,7 +217,6 @@ async def change_email(ctx): # TODO: Add comments, integrate zoom + firebase
                     # email_data[ctx.author.id] = message.content
                     # save_email_data()
                     # TODO: Change email in firebase server for user
-                    meeting_obj.change_email(email, message.content)    # NOTE: What is curretn user email??
                     zoomService.change_participant_email(meeting_id=zoom_meeting_id, old_email=current_email, new_email=message.content, first_name=ctx.author.name, last_name ="-")
                     await dm_channel.send(f"Email changed successfully. Your new email is: {message.content}")
                     break
@@ -209,12 +231,12 @@ async def change_email(ctx): # TODO: Add comments, integrate zoom + firebase
 @bot.command()
 async def delete_email(ctx): # TODO: Add comments, integrate zoom + firebase
     dm_channel = await ctx.author.create_dm()
-    current_email = email_data.get(ctx.author.id) # TODO: Get email from firebase   (Need a discord ID or something)
+    current_email = email_data.get(ctx.author.id) # TODO: Get email from firebase
     if current_email:
-        meeting_obj.remove_individual_registrant(current_email)
         # del email_data[ctx.author.id]
         # save_email_data()
         
+        # TODO: Delete email from firebase for meeting
         zoomService.remove_participant_from_meeting(zoom_meeting_id, current_email)
         await dm_channel.send("Your email has been deleted successfully.")
     else:
@@ -226,7 +248,7 @@ async def delete_email(ctx): # TODO: Add comments, integrate zoom + firebase
 @bot.command()
 async def view_email(ctx): # TODO: Integrate zoom + firebase
     dm_channel = await ctx.author.create_dm()
-    current_email = email_data.get(ctx.author.id)   # TODO: get email from firebase (but need discord ID or identifier)
+    # current_email = email_data.get(ctx.author.id)
     # TODO: Get user email from firebase
     if current_email:
         await dm_channel.send(f"Your current email on file is: {current_email}")

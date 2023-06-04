@@ -165,6 +165,14 @@ class Meeting:
 		self.registrants[discord_member_ID] = listToReAssign
 		update_cloud_meeting_file(self.meetingID, self)
 
+	def get_registrant(self, discord_id):
+		return self.registrants[discord_id]
+
+	def get_registrant_email(self, discord_id):
+		return self.registrants[discord_id][0]
+
+
+
 
 
 
