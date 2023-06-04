@@ -171,6 +171,10 @@ class Meeting:
 	def get_registrant_email(self, discord_id):
 		return self.registrants[discord_id][0]
 
+	def delete_registrant(self, discord_id):
+		del self.registrants[discord_id]
+		update_cloud_meeting_file(self.meetingID, self)
+
 
 
 
