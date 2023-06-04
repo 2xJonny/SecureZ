@@ -9,8 +9,6 @@ from zoom_service import ZoomService
 from database_service import Meeting, Client
 import database_service as firebase
 
-# test
-
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 @bot.event
