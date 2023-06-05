@@ -157,13 +157,12 @@ async def bot_help_slash(interaction: discord.Interaction):
     help_embed.color = discord.Color.from_rgb(0x2D, 0x8C, 0xFF)
     await interaction.response.send_message(content=message_content, embed=help_embed, ephemeral=True)
 
-
-
 @bot.command()
 async def add_email(ctx):
     dm_channel = await ctx.author.create_dm()
 
     current_email = meeting_obj.get_registrant_email(str(ctx.author.id))
+    await ctx.message.delete(delay=4)
 
     if current_email != "temp":
         await dm_channel.send("You already have an email associated with your Zoom account. If you want to change it, please use the `!change_email` command.")
@@ -189,14 +188,12 @@ async def add_email(ctx):
         await dm_channel.send("Email submission timed out. Please try again later.")
 
 
-
-
-
 @bot.command()
 async def change_email(ctx):
     dm_channel = await ctx.author.create_dm()
 
     current_email = meeting_obj.get_registrant_email(str(ctx.author.id))
+    await ctx.message.delete(delay=4)
 
     if current_email != "temp":
         await dm_channel.send(f"Your current email on file is: {current_email}\n\nPlease enter the new email you would like to associate with your Zoom account. The email must be in the format 'user@domain.com'.")
@@ -220,25 +217,19 @@ async def change_email(ctx):
     else:
         await dm_channel.send("You don't have an email on file. Please use the !add_email command to provide your email first.")
 
-    # Schedule deletion of command message after 4 seconds
-    await asyncio.create_task(delete_command_message(ctx.message, 4))
-
-
-
-
-
 
 @bot.command()
 async def delete_email(ctx):
+
     dm_channel = await ctx.author.create_dm()
     current_email = meeting_obj.get_registrant_email(str(ctx.author.id))
+    await ctx.message.delete(delay=4)
+
     if current_email != "temp":
         meeting_obj.change_email(str(ctx.author.id), "temp")
         await dm_channel.send("Your email has been deleted successfully.")
     else:
         await dm_channel.send("You don't have an email on file.")
-    await asyncio.sleep(4)  # Delay for 4 seconds
-    await ctx.message.delete()  # Delete the command message
 
 # Function to delete the command message after a delay
 async def delete_command_message(message, delay):
@@ -249,12 +240,12 @@ async def delete_command_message(message, delay):
 async def view_email(ctx):
     dm_channel = await ctx.author.create_dm()
     current_email = meeting_obj.get_registrant_email(str(ctx.author.id))
+    await ctx.message.delete(delay=4)
+
     if current_email != "temp":
         await dm_channel.send(f"Your current email on file is: {current_email}")
     else:
         await dm_channel.send("You don't have an email on file.")
-    await asyncio.sleep(4)  # Delay for 4 seconds
-    await ctx.message.delete()  # Delete the command message
 
 @bot.event
 async def on_member_update(before, after):
