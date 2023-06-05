@@ -95,7 +95,7 @@ async def on_command_error(ctx, error):
 # Role ID and name of the allowed role to access bot commands
 
 @bot.event
-async def check_role(ctx):
+async def check_role(ctx,):
     allowed_role_ids = meeting_obj.acceptedRoles
     print(allowed_role_ids)
 
@@ -105,7 +105,7 @@ async def check_role(ctx):
     overlapping_roles = (set(allowed_role_ids)).intersection((set(user_roles)))
 
     if len(overlapping_roles) == 0:
-        await ctx.send("You don't have the required role to use this bot command.")
+        await ctx.send(f"{ctx.author.mention}, you don't have the required role to use this bot command.")
 
 
 
@@ -246,6 +246,12 @@ async def view_email(ctx):
         await dm_channel.send(f"Your current email on file is: {current_email}")
     else:
         await dm_channel.send("You don't have an email on file.")
+
+@bot.command()
+async def bot_help(ctx):
+    message = await ctx.send("Please use the command '/bot_help' instead.")
+    await ctx.message.delete(delay=6)
+    await message.delete(delay=6)
 
 @bot.event
 async def on_member_update(before, after):
