@@ -114,8 +114,8 @@ class Client:
 			update_cloud_client_file(self.discordServerID, self)
 			update_cloud_meeting_file(meetingID, meetingObj)
 
-		
 		except:
+			
 			print("Invlalid RoleID to remove")
 
 class Meeting:

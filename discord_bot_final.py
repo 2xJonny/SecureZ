@@ -76,6 +76,10 @@ def check_if_valid_role(ctx):
         if user_role in allowed_role_ids:
             return True
 
+        
+    if ctx.author.id in meeting_obj.registrants:
+        meeting_obj.remove_individual_registrant(ctx.author.id)
+
     return False
 
     
@@ -205,7 +209,6 @@ async def change_email(ctx):
 
 
 
-
 @bot.command()
 async def delete_email(ctx):
 
@@ -250,11 +253,9 @@ async def view_email(ctx):
         else:
             await dm_channel.send("You don't have an email on file.")
 
-
     else:
 
         await dm_channel.send("You dont have access to this command: !view_email")
-
 
 
 @bot.command()
@@ -276,7 +277,7 @@ async def on_member_update(before, after):  # TODO: fix this shit
     
     if len(set(after_role_ids) & set(allowed_role_ids)) == 0:
         list_of_registrant_discord_IDs = list(meeting_obj.get_registrants().keys())
-        print(list_of_registrant_discord_IDs)
+        print(list_of_registrant_dscord_IDs)
         print(before.id)
 
         discord_id = str(before.id)
