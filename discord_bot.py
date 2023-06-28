@@ -39,8 +39,16 @@ zoom_meeting_id = "81866150394" # TODO: Pull from Firebase (unique to server)
 zoom_meeting_ids = client_obj.zoomMeetings.keys # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
 
 # Role ID of the allowed role to access bot commands
-allowed_role_id = 11060347034222080 # TODO: Pull from Firebase (unique to server), change to list (multiple roles allowed)
+meeting_id = "" # NOTE: I need the meeting ID of what we are runnning the script for 
+meeting_obj = firebase.get_meeting_file_as_obj(meeting_id)
 
+accepted_role_ids = meeting_obj.acceptedRoles   # allowed_role_id = 11060347034222080 # TODO: Pull from Firebase (unique to server), change to list (multiple roles allowed)
+
+meeting_registrants = meeting_obj.registrants
+
+
+
+    # NOTE: I need a meeeting ID before I am able to get the allowed_role_ids
 
 # email_data = {}  # Dictionary to store user email data
 
@@ -117,7 +125,7 @@ async def bot_help_slash(interaction: discord.Interaction):
 async def add_email(ctx): # TODO: Add comments, integrate zoom + firebase
     meeting_obj = firebase.get_meeting_file_as_obj(meetingID)
     dm_channel = await ctx.author.create_dm()
-    current_email = email_data.get(ctx.author.id)
+    current_email = email_data.get(ctx.author.id)   # NOTE: CAP
 
     if current_email:
         await dm_channel.send("You already have an email saved. Would you like to change it? (Y or N)")
@@ -130,6 +138,8 @@ async def add_email(ctx): # TODO: Add comments, integrate zoom + firebase
             response = await bot.wait_for('message', check=check_response, timeout=60) 
             if response.content.lower() == 'y':
                 await bot.get_command('change_email').invoke(ctx) # Call change_email command
+                new_email = await bot.wait_for('message', check=check_email, timeout=60)    # BUG: This could be wrong line of code but i needed a way to get the new email
+                meeting_obj.change_email(current_email, new_email.content)   # NOTE: how do I get the response of the new email
             elif response.content.lower() == 'n':
                 await dm_channel.send(f"No changes will be made to your current email: {current_email}")
             else:
@@ -179,6 +189,7 @@ async def change_email(ctx): # TODO: Add comments, integrate zoom + firebase
                     # email_data[ctx.author.id] = message.content
                     # save_email_data()
                     # TODO: Change email in firebase server for user
+                    meeting_obj.change_email(email, message.content)    # NOTE: What is curretn user email??
                     zoomService.change_participant_email(meeting_id=zoom_meeting_id, old_email=current_email, new_email=message.content, first_name=ctx.author.name, last_name ="-")
                     await dm_channel.send(f"Email changed successfully. Your new email is: {message.content}")
                     break
@@ -193,12 +204,12 @@ async def change_email(ctx): # TODO: Add comments, integrate zoom + firebase
 @bot.command()
 async def delete_email(ctx): # TODO: Add comments, integrate zoom + firebase
     dm_channel = await ctx.author.create_dm()
-    current_email = email_data.get(ctx.author.id) # TODO: Get email from firebase
+    current_email = email_data.get(ctx.author.id) # TODO: Get email from firebase   (Need a discord ID or something)
     if current_email:
+        meeting_obj.remove_individual_registrant(current_email)
         # del email_data[ctx.author.id]
         # save_email_data()
         
-        # TODO: Delete email from firebase for meeting
         zoomService.remove_participant_from_meeting(zoom_meeting_id, current_email)
         await dm_channel.send("Your email has been deleted successfully.")
     else:
@@ -210,7 +221,7 @@ async def delete_email(ctx): # TODO: Add comments, integrate zoom + firebase
 @bot.command()
 async def view_email(ctx): # TODO: Integrate zoom + firebase
     dm_channel = await ctx.author.create_dm()
-    # current_email = email_data.get(ctx.author.id)
+    current_email = email_data.get(ctx.author.id)   # TODO: get email from firebase (but need discord ID or identifier)
     # TODO: Get user email from firebase
     if current_email:
         await dm_channel.send(f"Your current email on file is: {current_email}")
