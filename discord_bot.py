@@ -11,6 +11,7 @@ import database_service as firebase
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
+
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name} ({bot.user.id})')
@@ -34,9 +35,11 @@ discord_owner_name = client_obj.ownerName
 zoom_client_id = client_obj.clientID
 zoom_client_secret = client_obj.clientSecret
 zoom_account_id = client_obj.accountID
-zoom_meeting_id = "81866150394" # TODO: Pull from Firebase (unique to server)
 
 zoom_meeting_ids = client_obj.zoomMeetings.keys # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
+zoom_meeting_id = zoom_meeting_ids[0]
+
+zoomService = ZoomService(zoom_client_id, zoom_client_secret, zoom_account_id)
 
 # Role ID of the allowed role to access bot commands
 meeting_id = "" # NOTE: I need the meeting ID of what we are runnning the script for 
