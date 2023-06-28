@@ -11,6 +11,9 @@ import database_service as firebase
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
+
+# hooray!
+
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name} ({bot.user.id})')
@@ -19,13 +22,26 @@ async def on_ready():
         print(f"Synced {len(synced)} command(s)")
     except Exception as e:
         print(e)
+    
+    for guild in bot.guilds: # Automatically pulls server_id 
+        server_id = guild.id
+        return server_id
 
-@bot.event
-async def on_member_join(member):
-    if "Member" in [role.name for role in member.roles]:
-        dm_channel = await member.create_dm()
-        await dm_channel.send("Welcome to SecureZ! To access exclusive Zoom meetings, please provide the email associated with your Zoom account.")
+discord_server_id = on_ready()  # TODO: Test that this works
 
+client_obj = firebase.get_client_file_as_obj(discord_server_id)
+
+discord_owner_email = client_obj.ownerEmail # In case we want to access the owner or use the name in messages
+discord_owner_name = client_obj.ownerName
+
+zoom_client_id = client_obj.clientID
+zoom_client_secret = client_obj.clientSecret
+zoom_account_id = client_obj.accountID
+
+zoom_meeting_ids = client_obj.zoomMeetings.keys # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
+zoom_meeting_id = zoom_meeting_ids[0]
+
+zoomService = ZoomService(zoom_client_id, zoom_client_secret, zoom_account_id)
 
 # Role ID of the allowed role to access bot commands
 allowed_role_id = 1106034703422722080
