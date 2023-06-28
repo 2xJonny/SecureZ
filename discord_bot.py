@@ -38,11 +38,6 @@ zoom_meeting_id = "81866150394" # TODO: Pull from Firebase (unique to server)
 
 zoom_meeting_ids = client_obj.zoomMeetings.keys # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
 
-# "\@role_name"
-
-
-
-
 # Role ID of the allowed role to access bot commands
 allowed_role_id = 11060347034222080 # TODO: Pull from Firebase (unique to server), change to list (multiple roles allowed)
 
