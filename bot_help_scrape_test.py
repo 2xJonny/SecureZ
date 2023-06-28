@@ -127,10 +127,6 @@ async def bot_help_slash(interaction: discord.Interaction):
             # Assuming the desired role is the second role in the member's role list
             if len(member.roles) >= 2:
                 role_id = member.roles[1].id
-
-
-
-
     help_embed = discord.Embed(title="SecureZ Bot Help", description="Available commands:")
     help_embed.add_field(name="/bot_help", value="Display this help message.", inline=False)
     help_embed.add_field(name="!add_email", value="Add email registered with your Zoom account.", inline=False)
@@ -150,59 +146,33 @@ async def bot_help_slash(interaction: discord.Interaction):
 
 
 @bot.command()
-async def add_email(ctx): # TODO: Add comments, integrate zoom + firebase
-    print("Entered")
+async def add_email(ctx):
     dm_channel = await ctx.author.create_dm()
-    # discord_id = ctx.message.author.id
-    
-    current_email = meeting_obj.registrants["432951612168994817"][0]
 
-    print(current_email)
+    current_email = meeting_obj.get_registrant_email(str(ctx.author.id))
 
     if current_email != "temp":
+        await dm_channel.send("You already have an email associated with your Zoom account. If you want to change it, please use the `!change_email` command.")
+        return
 
-        # if user already has email added and uses command, it will ask them if they want to change the email already listed
-        def check_response(message):
-            return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
+    await dm_channel.send("Please provide the email associated with your Zoom account. The email must be in the format 'user@gmail.com'.")
 
-        try:
-            response = await bot.wait_for('message', check=check_response, timeout=60) 
-            if response.content.lower() == 'y':
-                await bot.get_command('change_email').invoke(ctx) # Call change_email command
-            elif response.content.lower() == 'n':
-                await dm_channel.send(f"No changes will be made to your current email: {current_email}")
-            else:
-                await dm_channel.send("Invalid response. No changes will be made to your current email. If you would still like to change your email, use the command '!change_email'.") # If user inputs improper format, it will follow up
-        except asyncio.TimeoutError:
-            await dm_channel.send("Response timed out. No changes will be made to your current email.") 
-    else:
-        await dm_channel.send("Please provide the email associated with your Zoom account. The email must be in the format 'user@gmail.com'.") # Allows users to add email for the first time
-        def check_email(message):
-            return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
+    def check_email(message):
+        return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
 
-        try:
-            while True:
-                message = await bot.wait_for('message', check=check_email, timeout=60)
-                if "@" not in message.content:
-                    await dm_channel.send('The email must be in the format "user@domain.com". Please try again.')
-                else:
-                    meeting_obj.change_email("432951612168994817", message.content)
+    try:
+        message = await bot.wait_for('message', check=check_email, timeout=60)
+        if "@" not in message.content:
+            await dm_channel.send('The email must be in the format "user@domain.com". Please try again.')
+            return
 
-                    # email_data[ctx.author.id] = message.content
-                    # save_email_data()1
+        email = message.content
+        # Save the email to Firebase or perform any necessary operations
+        meeting_obj.change_email(str(ctx.author.id), email)
 
-# THIS IS NO LONGER NECESSARY WITH BOT_HELP SCRAPING ROLE ID
-                    # zoomService.add_participant_to_meeting(meeting_id, message.content)
-                    # local_role_ID = "get bot command \@role_name to run"    # TODO: need to get the roleID of the user the bot is chatting with rn 
-                    # meeting_obj.add_registrant(email=message.content, firstName=ctx.author.name, roleID=local_role_ID)
-           
-                    await dm_channel.send("Email saved successfully.")
-                    break
-        except asyncio.TimeoutError:
-            await dm_channel.send("Email submission timed out. Please try again later.")
-
-    # Schedule deletion of command message after 4 seconds
-    await asyncio.create_task(delete_command_message(ctx.message, 4))
+        await dm_channel.send("Email saved successfully.")
+    except asyncio.TimeoutError:
+        await dm_channel.send("Email submission timed out. Please try again later.")
 
 @bot.command()
 async def change_email(ctx):

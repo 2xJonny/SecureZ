@@ -19,68 +19,16 @@ async def on_ready():
         print(f"Synced {len(synced)} command(s)")
     except Exception as e:
         print(e)
-    
-    for guild in bot.guilds: # Automatically pulls server_id 
-        server_id = guild.id
-        return server_id
 
-discord_server_id = on_ready()  # TODO: Test that this works
-
-client_obj = firebase.get_client_file_as_obj(discord_server_id)
-
-discord_owner_email = client_obj.ownerEmail # In case we want to access the owner or use the name in messages
-discord_owner_name = client_obj.ownerName
-
-zoom_client_id = client_obj.clientID
-zoom_client_secret = client_obj.clientSecret
-zoom_account_id = client_obj.accountID
-zoom_meeting_id = client_obj.zoomMeetings.keys[0]
-zoom_meeting_accepted_roles = client_obj.zoomMeetings[zoom_meeting_id]
- # TODO: Pull from Firebase (unique to server)
-
-meeting_obj = firebase.get_meeting_file_as_obj(zoom_meeting_id)
-# "\@role_name"
-
-
+@bot.event
+async def on_member_join(member):
+    if "Member" in [role.name for role in member.roles]:
+        dm_channel = await member.create_dm()
+        await dm_channel.send("Welcome to SecureZ! To access exclusive Zoom meetings, please provide the email associated with your Zoom account.")
 
 
 # Role ID of the allowed role to access bot commands
-# allowed_role_id = 11060347034222080 # TODO: Pull from Firebase (unique to server), change to list (multiple roles allowed)
-
-
-# email_data = {}  # Dictionary to store user email data
-
-# Load email data from file
-# def load_email_data():
-#     try:
-#         with open("email_data.txt", "r") as file:
-#             lines = file.readlines()
-#             for line in lines:
-#                 user_id, email = line.strip().split(":")
-#                 email_data[int(user_id)] = email
-#     except FileNotFoundError:
-#         # Create the file if it doesn't exist
-#         with open("email_data.txt", "w"):
-#             pass
-
-# Save email data to file
-# def save_email_data():  
-#     with open("email_data.txt", "w") as file:
-#         for user_id, email in email_data.items():
-#             file.write(f"{user_id}:{email}\n")
-
-
-
-# @bot.event
-# async def on_member_join(member):
-#     if "Member" in [role.name for role in member.roles]:
-#         dm_channel = await member.create_dm()
-#         await dm_channel.send("Welcome to SecureZ! To access exclusive Zoom meetings, please provide the email associated with your Zoom account.")
-
-# @bot.event 
-# async def on_command_error(ctx, error):
-#     if isinstance(error, commands.CommandNotFound):
-#         return
+allowed_role_id = 1106034703422722080
 
 def check_role(ctx):
     role = discord.utils.get(ctx.guild.roles, id=allowed_role_id)
@@ -139,11 +87,10 @@ async def bot_help_slash(interaction: discord.Interaction):
 
 
 @bot.command()
-async def add_email(ctx, discord_id): # TODO: Add comments, integrate zoom + firebase
+async def add_email(ctx):
     dm_channel = await ctx.author.create_dm()
-    current_email = meeting_obj.get_registrant_email(discord_id)
-
-    if current_email != "temp":
+    current_email = email_data.get(ctx.author.id)
+    if current_email:
         await dm_channel.send("You already have an email saved. Would you like to change it? (Y or N)")
 
         # if user already has email added and uses command, it will ask them if they want to change the email already listed
@@ -153,7 +100,7 @@ async def add_email(ctx, discord_id): # TODO: Add comments, integrate zoom + fir
         try:
             response = await bot.wait_for('message', check=check_response, timeout=60) 
             if response.content.lower() == 'y':
-                await bot.get_command('change_email').invoke(ctx) # Call change_email command
+                await bot.get_command('change_email').invoke(ctx)
             elif response.content.lower() == 'n':
                 await dm_channel.send(f"No changes will be made to your current email: {current_email}")
             else:
@@ -171,27 +118,8 @@ async def add_email(ctx, discord_id): # TODO: Add comments, integrate zoom + fir
                 if "@" not in message.content:
                     await dm_channel.send('The email must be in the format "user@domain.com". Please try again.')
                 else:
-                    meeting_obj.change_email(discord_member_ID=discord_id, newEmail=message.content)
-
-                    # email_data[ctx.author.id] = message.content
-                    # save_email_data()1
-
-
-
-
-
-
-
-# THIS IS NO LONGER NECESSARY WITH BOT_HELP SCRAPING ROLE ID
-                    zoomService.add_participant_to_meeting(meeting_id, message.content)
-                    local_role_ID = "get bot command \@role_name to run"    # TODO: need to get the roleID of the user the bot is chatting with rn 
-                    meeting_obj.add_registrant(email=message.content, firstName=ctx.author.name, roleID=local_role_ID)
-                    
-
-
-
-
-
+                    email_data[ctx.author.id] = message.content
+                    save_email_data()
                     await dm_channel.send("Email saved successfully.")
                     break
         except asyncio.TimeoutError:
@@ -214,10 +142,8 @@ async def change_email(ctx): # TODO: Add comments, integrate zoom + firebase
                 if "@" not in message.content:
                     await dm_channel.send("The email must be in the format 'user@gmail.com'. Please try again.") # Checks for proper email format
                 else:
-                    # email_data[ctx.author.id] = message.content
-                    # save_email_data()
-                    # TODO: Change email in firebase server for user
-                    zoomService.change_participant_email(meeting_id=zoom_meeting_id, old_email=current_email, new_email=message.content, first_name=ctx.author.name, last_name ="-")
+                    email_data[ctx.author.id] = message.content
+                    save_email_data()
                     await dm_channel.send(f"Email changed successfully. Your new email is: {message.content}")
                     break
         except asyncio.TimeoutError:
@@ -231,13 +157,10 @@ async def change_email(ctx): # TODO: Add comments, integrate zoom + firebase
 @bot.command()
 async def delete_email(ctx): # TODO: Add comments, integrate zoom + firebase
     dm_channel = await ctx.author.create_dm()
-    current_email = email_data.get(ctx.author.id) # TODO: Get email from firebase
+    current_email = email_data.get(ctx.author.id)
     if current_email:
-        # del email_data[ctx.author.id]
-        # save_email_data()
-        
-        # TODO: Delete email from firebase for meeting
-        zoomService.remove_participant_from_meeting(zoom_meeting_id, current_email)
+        del email_data[ctx.author.id]
+        save_email_data()
         await dm_channel.send("Your email has been deleted successfully.")
     else:
         await dm_channel.send("You do not have an email on file.")
@@ -248,8 +171,7 @@ async def delete_email(ctx): # TODO: Add comments, integrate zoom + firebase
 @bot.command()
 async def view_email(ctx): # TODO: Integrate zoom + firebase
     dm_channel = await ctx.author.create_dm()
-    # current_email = email_data.get(ctx.author.id)
-    # TODO: Get user email from firebase
+    current_email = email_data.get(ctx.author.id)
     if current_email:
         await dm_channel.send(f"Your current email on file is: {current_email}")
     else:

@@ -87,7 +87,6 @@ class ZoomService:
         self.add_participant_to_meeting(meeting_id, first_name, last_name, new_email)
 
 
-
 # zoomService = ZoomService(zoom_client_id, zoom_client_secret)
 
 # meeting_id = "81866150394"
