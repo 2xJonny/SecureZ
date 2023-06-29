@@ -34,8 +34,11 @@ discord_owner_name = client_obj.ownerName
 zoom_client_id = client_obj.clientID
 zoom_client_secret = client_obj.clientSecret
 zoom_account_id = client_obj.accountID
-zoom_meeting_id = client_obj.zoomMeetings.keys[0]
-zoom_meeting_accepted_roles = client_obj.zoomMeetings[zoom_meeting_id]
+
+zoom_meeting_ids = client_obj.zoomMeetings.keys # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
+zoom_meeting_id = zoom_meeting_ids[0]
+
+zoomService = ZoomService(zoom_client_id, zoom_client_secret, zoom_account_id)
  # TODO: Pull from Firebase (unique to server)
 
 meeting_obj = firebase.get_meeting_file_as_obj(zoom_meeting_id)
