@@ -43,6 +43,8 @@ zoom_account_id = client_obj.accountID
 
 meeting_obj = firebase.get_meeting_file_as_obj("qqqmeetingIDqqq")
 
+print(meeting_obj.registrants)
+
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -55,6 +57,7 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
+    
     if "Member" in [role.name for role in member.roles]:
         dm_channel = await member.create_dm()
         await dm_channel.send("Welcome to SecureZ! To access exclusive Zoom meetings, please provide the email associated with your Zoom account.")
@@ -69,8 +72,11 @@ async def on_command_error(ctx, error):
 
 def check_if_valid_role(ctx):
     allowed_role_ids = meeting_obj.acceptedRoles
+    print(allowed_role_ids)
 
     user_roles_list = meeting_obj.get_registrant(str(ctx.author.id))[2].split(",")
+    print(user_roles_list)
+
 
     for user_role in user_roles_list:
         if user_role in allowed_role_ids:
@@ -86,12 +92,14 @@ def check_if_valid_role(ctx):
 @bot.tree.command(name="bot_help")
 async def bot_help_slash(interaction: discord.Interaction):
 
-    roles_of_registrant_list = meeting_obj.get_registrant(str(interaction.user.id))[2].split(",")
-    print(roles_of_registrant_list)
 
-    isValidSet = set(roles_of_registrant_list) & set(meeting_obj.acceptedRoles)
 
-    if len(isValidSet) != 0:
+    # roles_of_registrant_list = meeting_obj.get_registrant(str(interaction.user.id))[2].split(",")
+    # print(roles_of_registrant_list)
+
+    isValidSet = set()# set(roles_of_registrant_list) & set(meeting_obj.acceptedRoles)
+
+    if len(isValidSet) == 0:
 
         user_id = interaction.user.id
         username = interaction.user.name
@@ -132,6 +140,8 @@ async def add_email(ctx):
 
     isValidRole = check_if_valid_role(ctx)
 
+    print(isValidRole)
+
     dm_channel = await ctx.author.create_dm()
 
     if isValidRole:
@@ -142,8 +152,8 @@ async def add_email(ctx):
 
         if current_email != "temp":
             await dm_channel.send("You already have an email associated with your Zoom account. If you want to change it, please use the `!change_email` command.")
-            return
 
+        else:
             await dm_channel.send("Please provide the email associated with your Zoom account. The email must be in the format 'user@gmail.com'.")
 
             def check_email(message):
@@ -161,6 +171,7 @@ async def add_email(ctx):
                 await dm_channel.send("Email saved successfully.")
             except asyncio.TimeoutError:
                 await dm_channel.send("Email submission timed out. Please try again later.")
+            
 
     else:
 
@@ -267,25 +278,123 @@ async def bot_help(ctx):
 @bot.event
 async def on_member_update(before, after):  # TODO: fix this shit
 
+    discord_ID = str(after.id)   # ID of current discord user
+
     allowed_role_ids = meeting_obj.acceptedRoles
 
     after_role_ids = []
 
-    for role_obj in after.roles:
-        after_role_ids.append(role_obj.id)
+    role_string_list = ""
+
+    for role_obj in after.roles:    # populating roles of user for future use
+
+        after_role_ids.append(str(role_obj.id))
+        role_string_list = role_string_list + "," + str(role_obj.id)
+
+
+    current_registrant_discord_ids = list(meeting_obj.registrants.keys())   # discord ID's of current ppl in firebase
+
+    print(current_registrant_discord_ids)
+
+    if (discord_ID in current_registrant_discord_ids): # checking if user is in firebase
+
+        meeting_obj.change_role(role_string_list, discord_ID)   # works for 1 -> 0 and 1 -> 1
+
+        if len(set(after_role_ids) & set(allowed_role_ids)) == 0:   # this means Firebase user has roles that is NOT valid
+            print("remove from zoom!")
+            ZoomService.remove_participant_from_meeting(meeting_id=meeting_obj.meetingID, email=meeting_obj.get_registrant_email(discord_ID)) # remove them from zoom whitelist
+
+        else:
+            # add to zoom meeting 
+            print("add to zoom!")
+            
+    else: 
+
+        if len(set(after_role_ids) & set(allowed_role_ids)) > 0:   # this means the NEW user has a role that is valid
+
+            meeting_obj.add_registrant(discord_member_ID=discord_ID, email="temp", firstName=str(after.name), roleID=role_string_list) # added new user to firebase
+            print("PROMPT TO ADD EMAIL")
+            # prompt to get their email
+
+
+            
+
+
+
+
+
+
+
+
+
+        
+        # if len(set(after_role_ids) & set(allowed_role_ids)) == 0:   # this means the user doesnt have a role that is required
+        #     meeting_obj.change_role(role_string_list, discord_ID)
+        #     # update their roles list with new roles   # This takes care of if a user gets demoted (1 -> 0)
+        #     return 
+
+        # else:
+
+
+
+
+            # current_registrant_discord_ids = list(meeting_obj.registrants.keys())   # discord ID's of current ppl in firebase
+
+            # if (discord_ID in current_registrant_discord_ids): # checking if user is in firebase
+            #     # Handling user coming back to paid member (0 -> 1 -> 0)
+            #     meeting_obj.change_role(role_string_list, discord_ID)
+                
+
+            # else:
+            # Handling new user (0 -> 1)
+            
+
+
+
+
 
     
-    if len(set(after_role_ids) & set(allowed_role_ids)) == 0:
-        list_of_registrant_discord_IDs = list(meeting_obj.get_registrants().keys())
-        print(list_of_registrant_dscord_IDs)
-        print(before.id)
-
-        discord_id = str(before.id)
-
-        if discord_id in list_of_registrant_discord_IDs:
-            meeting_obj.delete_registrant(discord_id)
 
 
-# Run bot
+    
+
+
+    # if len(set(after_role_ids) & set(allowed_role_ids)) == 0:   # this means the user doesnt have a role that is required
+
+    #     discord_id = str(before.id)
+
+    #     if discord_id in list_of_registrant_discord_IDs:
+    #         meeting_obj.delete_registrant(discord_id)
+
+
+
+
+
+    
+
+    
+
+
+
+    
+
+
+
+
+
+
+
+    # if user file is in firebase but dont have the allowed role, but then they get added back --> need to update firebase with new roles 
+
+
+    
+    # if len(set(after_role_ids) & set(allowed_role_ids)) == 0:
+    #     list_of_registrant_discord_IDs = list(meeting_obj.get_registrants().keys())
+    #     print(list_of_registrant_dscord_IDs)
+    #     print(before.id)
+
+
+
+# # Run bot
 load_dotenv()
 bot.run(os.environ.get('DISCORD_TOKEN'))

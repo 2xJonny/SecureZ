@@ -159,9 +159,9 @@ class Meeting:
 		self.registrants[discord_member_ID] = listOfRegistrantInfo
 		update_cloud_meeting_file(self.meetingID, self)
 
-	def change_role(self, newRoleID, discord_member_ID):
+	def change_role(self, newRoleIDStringList, discord_member_ID):
 		listToReAssign = self.registrants[discord_member_ID]
-		listToReAssign[2] = newRoleID
+		listToReAssign[2] = newRoleIDStringList
 		self.registrants[discord_member_ID] = listToReAssign
 		update_cloud_meeting_file(self.meetingID, self)
 
@@ -174,6 +174,9 @@ class Meeting:
 	def delete_registrant(self, discord_id):
 		del self.registrants[discord_id]
 		update_cloud_meeting_file(self.meetingID, self)
+
+
+
 
 
 
