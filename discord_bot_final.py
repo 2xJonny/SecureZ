@@ -38,7 +38,7 @@ zoom_client_id = client_obj.clientID
 zoom_client_secret = client_obj.clientSecret
 zoom_account_id = client_obj.accountID
 
-zoom_meeting_ids = client_obj.zoomMeetings.keys # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
+zoom_meeting_ids = list(client_obj.zoomMeetings.keys()) # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
 zoom_meeting_id = zoom_meeting_ids[0]
 
 zoomService = ZoomService(zoom_client_id, zoom_client_secret, zoom_account_id)
