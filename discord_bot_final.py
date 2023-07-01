@@ -34,20 +34,16 @@ client_obj = firebase.get_client_file_as_obj('kjsgbuwneiwe')
 discord_owner_email = client_obj.ownerEmail # In case we want to access the owner or use the name in messages
 discord_owner_name = client_obj.ownerName
 
-zoom_client_id = client_obj.clientID
-zoom_client_secret = client_obj.clientSecret
-zoom_account_id = client_obj.accountID
-
 zoom_meeting_ids = list(client_obj.zoomMeetings.keys()) # In firebase, each meetingID maps to a list of the acceptedRoles, so we get the keys of the dict which are just the meetingID's
 zoom_meeting_id = zoom_meeting_ids[0]
 
-zoomService = ZoomService(zoom_client_id, zoom_client_secret, zoom_account_id)
+zoom_service = ZoomService(client_obj.clientID, client_obj.clientSecret, client_obj.accountID)
 
 # zoom_meeting_ids = client_obj.zoomMeetings.keys()
 # zoom_meeting_accepted_roles = client_obj.zoomMeetings[zoom_meeting_ids[0]]
  # TODO: Pull from Firebase (unique to server)
-
-meeting_obj = firebase.get_meeting_file_as_obj("qqqmeetingIDqqq")
+zoom_meeting_id = list(client_obj.zoomMeetings.keys())[0]
+meeting_obj = firebase.get_meeting_file_as_obj(zoom_meeting_id)
 
 print(meeting_obj.registrants)
 
@@ -98,8 +94,6 @@ def check_if_valid_role(ctx):
 @bot.tree.command(name="bot_help")
 async def bot_help_slash(interaction: discord.Interaction):
 
-
-
     # roles_of_registrant_list = meeting_obj.get_registrant(str(interaction.user.id))[2].split(",")
     # print(roles_of_registrant_list)
 
@@ -139,8 +133,6 @@ async def bot_help_slash(interaction: discord.Interaction):
 
 
 
-
-
 @bot.command()
 async def add_email(ctx):
 
@@ -173,6 +165,7 @@ async def add_email(ctx):
 
                 email = message.content
                 meeting_obj.change_email(str(ctx.author.id), email)
+                zoom_service.add_participant_to_meeting(meeting_id= meeting_obj.meetingID, first_name= ctx.author.name, last_name= "-", email= email)
 
                 await dm_channel.send("Email saved successfully.")
             except asyncio.TimeoutError:
@@ -211,6 +204,7 @@ async def change_email(ctx):
                         newEmail = message.content
 
                         meeting_obj.change_email(str(ctx.author.id), newEmail)
+                        zoom_service.change_participant_email(meeting_id= meeting_obj.meetingID, old_email=current_email, new_email=newEmail, first_name=ctx.author.name, last_name="-")
                     
                         await dm_channel.send(f"Email changed successfully. Your new email is: {message.content}")
                         break
@@ -240,6 +234,7 @@ async def delete_email(ctx):
 
         if current_email != "temp":
             meeting_obj.change_email(str(ctx.author.id), "temp")
+            zoom_service.remove_participant_from_meeting(meeting_id= meeting_obj.meetingID, email= current_email)
             await dm_channel.send("Your email has been deleted successfully.")
         else:
             await dm_channel.send("You don't have an email on file.")
@@ -308,7 +303,7 @@ async def on_member_update(before, after):  # TODO: fix this shit
 
         if len(set(after_role_ids) & set(allowed_role_ids)) == 0:   # this means Firebase user has roles that is NOT valid
             print("remove from zoom!")
-            ZoomService.remove_participant_from_meeting(meeting_id=meeting_obj.meetingID, email=meeting_obj.get_registrant_email(discord_ID)) # remove them from zoom whitelist
+            zoom_service.remove_participant_from_meeting(meeting_id=meeting_obj.meetingID, email=meeting_obj.get_registrant_email(discord_ID)) # remove them from zoom whitelist
 
         else:
             # add to zoom meeting 
